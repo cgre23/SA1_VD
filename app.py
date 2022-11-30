@@ -10,8 +10,8 @@ st.set_page_config(
     page_title="SASE1 Virtual Diagnostics", layout="wide"
 )
 
-st.title("SASE1 Orbit Viewer")
-"""This demo demonstrates SASE2 orbit visualization using DOOCS HIST data for 21.10.2022, local time."""
+st.title("SASE1 Virtual Diagnostics")
+"""This demo demonstrates SASE1 virtual diagnostics using DAQ datastreams."""
 
 
 st.sidebar.title("Settings")
