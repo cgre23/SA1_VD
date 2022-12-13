@@ -1,10 +1,7 @@
-import plotly.express as px
+#import plotly.express as px
 import streamlit as st
 import pandas as pd
-
-
-#import the data available in plotly.express
-gapminder_df = px.data.gapminder()
+#import pydoocs
 
 st.set_page_config(
     page_title="SASE1 Virtual Diagnostics", layout="wide"
@@ -52,9 +49,8 @@ st.sidebar.caption("Developed by: Christian Grech (DESY, MXL)")
 st.sidebar.caption(f"Streamlit version `{st.__version__}`")
 
 
-dfm = pd.read_pickle('merged.pkl')
+dfm = pd.read_pickle('data/merged.pkl')
 
 
-# Animation year by year basis
 
 
