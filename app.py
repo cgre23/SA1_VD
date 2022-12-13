@@ -49,7 +49,7 @@ st.sidebar.caption("Developed by: Christian Grech (DESY, MXL)")
 st.sidebar.caption(f"Streamlit version `{st.__version__}`")
 
 
-dfm = pd.read_pickle('data/merged.pkl')
+dfm = pd.read_pickle('../data/merged.pkl')
 
 
 
