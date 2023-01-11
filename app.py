@@ -10,6 +10,7 @@ import datetime
 import asyncio
 import time
 import numpy as np
+import os
 #import pydoocs
 
 st.set_page_config(
@@ -31,6 +32,12 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
+def file_selector(folder_path='.'):
+    filenames = os.listdir(folder_path)
+    selected_filename = st.selectbox('Select a file', filenames)
+    return os.path.join(folder_path, selected_filename)
+
 
 async def watch(test):
     secs = 0
@@ -90,31 +97,46 @@ with tab1:
     #st.image("https://static.streamlit.io/examples/cat.jpg", width=200)
     ce, c1, ce, c2, ce, c4, ce, c5 = st.columns([0.07, 1, 0.07, 1, 0.07, 1, 0.07, 1])
     with c1:
-        test = st.empty()
+        datastream = st.radio("Choose datastream:", ('SASE 1', 'SASE 2', 'SASE 3'))
         #start_button = st.button("Start DAQ")
         #d1 = st.date_input("Start date", datetime.datetime.now())
         #d2 = st.date_input("Stop date", datetime.datetime.now())
-
-    with c2:
-        test = st.empty()
-        #start = "00:00"
-        #end = "23:59"
-        #times = []
-        #start = now = datetime.datetime.strptime(start, "%H:%M")
-        #end = datetime.datetime.strptime(end, "%H:%M")
-        #while now != end:
-        #    times.append(str(now.strftime("%H:%M")))
-        #    now += datetime.timedelta(minutes=1)
-        #times.append(end.strftime("%H:%M"))
-        #t1 = st.selectbox('Start time:',times)
-
-        #t2 = st.selectbox('Stop time:',times)
         
+    with c2:
+        xmlfolder = st.text_input('XML description file path:', '/daq/xfel/admtemp/2022/linac/main/run1982')
+        try:
+            xmldfile = file_selector(xmlfolder)
+        except:
+            xmldfile = file_selector()
+        st.write('You selected `%s`' % xmldfile)
+        apply_filter = st.checkbox('Apply filter by destination')
     
     with c4:
         daq_button = st.empty()
         start_button = daq_button.button('Start DAQ')
 
+    st.markdown('Convert RAW files to HDF5:')
+    #ce, c1, ce, c2, ce, c4, ce, c5 = st.columns([0.07, 1, 0.07, 1, 0.07, 1, 0.07, 1])
+    #with c1:
+        #start_button = st.button("Start DAQ")
+    #    d1 = st.date_input("Start date", datetime.datetime.now())
+    #    d2 = st.date_input("Stop date", datetime.datetime.now())
+
+    #with c2:
+    #    test = st.empty()
+    #    start = "00:00"
+    #    end = "23:59"
+    #    times = []
+    #    start = now = datetime.datetime.strptime(start, "%H:%M")
+    #    end = datetime.datetime.strptime(end, "%H:%M")
+    #    while now != end:
+    #        times.append(str(now.strftime("%H:%M")))
+    #        now += datetime.timedelta(minutes=1)
+    #    times.append(end.strftime("%H:%M"))
+    #    t1 = st.selectbox('Start time:',times)
+    #    t2 = st.selectbox('Stop time:',times)
+
+    
 #if not daq_button:
 #    st.stop()
 
