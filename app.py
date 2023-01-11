@@ -7,6 +7,8 @@ from modules.NN_test import test_NN
 import plotly.express as px
 import matplotlib.pyplot as plt
 import datetime
+import asyncio
+import time
 import numpy as np
 #import pydoocs
 
@@ -17,9 +19,35 @@ st.set_page_config(
 st.title("SASE1 Virtual Diagnostics")
 """This demo demonstrates SASE1 virtual diagnostics using DAQ datastreams."""
 
+st.markdown(
+    """
+    <style>
+    .time {
+        font-size: 40px !important;
+        font-weight: 200 !important;
+        color: #ec5953 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
-#st.sidebar.title("Settings")
+async def watch(test):
+    secs = 0
+    while True:
+        mm, ss = secs // 60, secs % 60
+        test.markdown(
+            f"""
+            <p class="time">
+                {f"DAQ running: {mm:02d}:{ss:02d}"}
+            </p>
+            """, unsafe_allow_html=True)
+        r = await asyncio.sleep(1)
+        secs = secs + 1
 
+        if stop_button:
+            start_button = daq_button.button('Start DAQ')
+            break
 
     # Can be used wherever a "file-like" object is accepted:
     #st.write(dataframe)
@@ -58,36 +86,34 @@ st.title("SASE1 Virtual Diagnostics")
 tab1, tab2, tab3, tab4 = st.tabs(["DAQ", "Gridsearch", "Train", "Test"])
 
 with tab1:
-   st.header("DAQ")
-   #st.image("https://static.streamlit.io/examples/cat.jpg", width=200)
-   with st.form(key="DAQ_form"):
-
+    st.header("DAQ")
+    #st.image("https://static.streamlit.io/examples/cat.jpg", width=200)
     ce, c1, ce, c2, ce, c4, ce, c5 = st.columns([0.07, 1, 0.07, 1, 0.07, 1, 0.07, 1])
     with c1:
-        d1 = st.date_input("Start date", datetime.datetime.now())
-        d2 = st.date_input("Stop date", datetime.datetime.now())
+        test = st.empty()
+        #start_button = st.button("Start DAQ")
+        #d1 = st.date_input("Start date", datetime.datetime.now())
+        #d2 = st.date_input("Stop date", datetime.datetime.now())
 
     with c2:
-        start = "00:00"
-        end = "23:59"
-        times = []
-        start = now = datetime.datetime.strptime(start, "%H:%M")
-        end = datetime.datetime.strptime(end, "%H:%M")
-        while now != end:
-            times.append(str(now.strftime("%H:%M")))
-            now += datetime.timedelta(minutes=1)
-        times.append(end.strftime("%H:%M"))
-        t1 = st.selectbox('Start time:',times)
+        test = st.empty()
+        #start = "00:00"
+        #end = "23:59"
+        #times = []
+        #start = now = datetime.datetime.strptime(start, "%H:%M")
+        #end = datetime.datetime.strptime(end, "%H:%M")
+        #while now != end:
+        #    times.append(str(now.strftime("%H:%M")))
+        #    now += datetime.timedelta(minutes=1)
+        #times.append(end.strftime("%H:%M"))
+        #t1 = st.selectbox('Start time:',times)
 
-        t2 = st.selectbox('Stop time:',times)
+        #t2 = st.selectbox('Stop time:',times)
         
-        #t1 = st.time_input("Start time", datetime.datetime.now())
-        #t2 = st.time_input("Stop time", datetime.datetime.now())
-        #words = st.text_area("Enter search words:", height=10)
-        #words = st.multiselect('Choose a Keyword Tag:', df, max_selections=1)
     
-    with c2:
-        daq_button = st.form_submit_button(label="✨ DAQ")
+    with c4:
+        daq_button = st.empty()
+        start_button = daq_button.button('Start DAQ')
 
 #if not daq_button:
 #    st.stop()
@@ -170,6 +196,10 @@ with tab4:
     st.plotly_chart(fig, theme="streamlit", use_container_width=True)
 
 
+test = st.empty()
+if start_button:
+    stop_button = daq_button.button('Stop DAQ')
+    asyncio.run(watch(test))
 
 #if not submit_button:
 #    st.stop()
