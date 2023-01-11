@@ -107,6 +107,7 @@ with tab1:
         try:
             xmldfile = file_selector(xmlfolder)
         except:
+            st.write('Folder not found. Listing files in current folder.')
             xmldfile = file_selector()
         st.write('You selected `%s`' % xmldfile)
         apply_filter = st.checkbox('Apply filter by destination')
