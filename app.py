@@ -56,13 +56,12 @@ async def convert(bunchfilter, xmldfile):
     if v:
         st.write('Converting the following runs:')
         st.dataframe(v)
-        v = v.reset_index()  # make sure indexes pair with number of rows
         command = ''
         for index, row in v.iterrows():
             print(row['Start'], row['Stop'])
             startstring = row['Start']
             stopstring = row['Stop']
-            command = command + 'python'
+            command = command + 'python3'
 
         #command = "python3 modules/level0.py --start %s --stop %s --xmldfile %s --dest %s" % (startstring, stopstring, xmldfile, bunchfilter)"
         com = "python3 modules/hello.py; python3 modules/hello.py"
