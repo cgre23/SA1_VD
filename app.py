@@ -6,141 +6,136 @@ from modules.NN_train import train_NN
 from modules.NN_test import test_NN
 import plotly.express as px
 import matplotlib.pyplot as plt
+import streamlit_toggle as tog
 import datetime
 import asyncio
 import time
 import numpy as np
 import os
-#import pydoocs
+import subprocess
+from st_aggrid import AgGrid, GridUpdateMode, JsCode
+from st_aggrid.grid_options_builder import GridOptionsBuilder
+import pydoocs
 
-st.set_page_config(
-    page_title="SASE1 Virtual Diagnostics", layout="wide"
-)
+SA1_datastream_toggle = 'XFEL.DAQ/DISTRIBUTOR/DAQ.STREAM.5/EVB.EV.MASK'
+SA2_datastream_toggle = 'XFEL.DAQ/DISTRIBUTOR/DAQ.STREAM.6/EVB.EV.MASK'
+SA3_datastream_toggle = 'XFEL.DAQ/DISTRIBUTOR/DAQ.STREAM.7/EVB.EV.MASK'
+datastream_off_value = 0#2147483603
+datastream_on_value = 1
+csv_location = 'records/daq_records.csv'
 
-st.title("SASE1 Virtual Diagnostics")
-"""This demo demonstrates SASE1 virtual diagnostics using DAQ datastreams."""
+st.set_page_config(page_title="Virtual Diagnostics", layout="wide")
 
-st.markdown(
-    """
-    <style>
-    .time {
-        font-size: 40px !important;
-        font-weight: 200 !important;
-        color: #ec5953 !important;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+st.title("Virtual Diagnostics")
+"""This demo demonstrates virtual diagnostics using DAQ datastreams."""
 
 def file_selector(folder_path='.'):
     filenames = os.listdir(folder_path)
     selected_filename = st.selectbox('Select a file', filenames)
     return os.path.join(folder_path, selected_filename)
 
+@st.cache
+def convert_df(df):
+    # Cache the conversion to prevent computation on every rerun
+    df.to_csv(csv_location, index=False)
 
-async def watch(test):
+async def watch(records):
     secs = 0
+    c = st.info('Starting DAQ')
     while True:
         mm, ss = secs // 60, secs % 60
-        test.markdown(
-            f"""
-            <p class="time">
-                {f"DAQ running: {mm:02d}:{ss:02d}"}
-            </p>
-            """, unsafe_allow_html=True)
+        c.info(f"DAQ running: {mm:02d}:{ss:02d}")
         r = await asyncio.sleep(1)
         secs = secs + 1
 
-        if stop_button:
-            start_button = daq_button.button('Start DAQ')
-            break
+        #if stop_button:
+        #    break
+        
+async def convert(command):
+    v = grid_table['selected_rows']
+    if v:
+        st.write('Converting the following runs')
+        st.dataframe(v)
 
-    # Can be used wherever a "file-like" object is accepted:
-    #st.write(dataframe)
-# If the user doesn't want to select which features to control, these will be used.
-#fac = "XFEL*"
-#facility = pydoocs.names("XFEL*")
-#fac = st.sidebar.selectbox('Facility filter', facility)
-#device = pydoocs.names(str(fac)+'/*')
-#dev = st.sidebar.selectbox('Device filter', device)
-#location = pydoocs.names(str(fac)+'/'+ str(dev)+'/*')
-#loc = st.sidebar.selectbox('Location filter', location)
-
-#st.write('You selected: ', str(fac)+'/'+ str(dev)+'/'+str(loc))
-#if st.sidebar.checkbox("Show advanced options"):
-    # Let the user pick which features to control with sliders.
-#    speed = st.sidebar.number_input('Set animation speed', min_value=1, max_value=500, value=50, step=5, format=None, key='speed', help='None')
-#st.sidebar.write("""The animation speed is fixed at 10 ms per frame.""")
-    #control_features = st.sidebar.multiselect(
-    #    "Exclude which cells?",
-    #    ['Cell 1', 'Cell 2', 'Cell 3', 'Cell 4', 'Cell 5', 'Cell 6', 'Cell 7', 'Cell 8', 'Cell 9', 'Cell 10'],
-   #     ['Cell 1'], help='This is still work in progress.'
-    #)
-#else:
-    # Don't let the user pick feature values to control.
-    #control_features = default_control_features
-#    speed = 100
-#st.sidebar.slider('Test', 0, 100, 50, 5)
-#st.sidebar.title("Note")
-#st.sidebar.write(
-#    """The app is still in development.
-#     """
-#)
-#st.sidebar.caption("Developed by: Christian Grech (DESY, MXL)")
-#st.sidebar.caption(f"Streamlit version `{st.__version__}`")
+        try:
+            with st.spinner('Converting, please wait...'):
+                proc1 = subprocess.run(command, shell=True, check=True)
+        except FileNotFoundError as exc:
+            st.info(f"Process failed because the executable could not be found.\n{exc}")
+            return
+        except subprocess.CalledProcessError as exc:
+            st.info(f"Process failed because did not return a successful return code. " f"Returned {exc.returncode}\n{exc}")
+            return
+        
+        if stop_convert_button:
+            proc1.kill()
+            return 
+        
+        if proc1.returncode == 0:
+            st.success('Converted successfully!', icon="✅")
+            return
+    else:
+        st.exception('No runs selected. Select run(s) from table.')
+    
+    
+if 'start_daq' not in st.session_state:
+    st.session_state['start_daq'] = False
+if 'starttime' not in st.session_state:
+    st.session_state['starttime'] = None
 
 tab1, tab2, tab3, tab4 = st.tabs(["DAQ", "Gridsearch", "Train", "Test"])
 
 with tab1:
     st.header("DAQ")
-    #st.image("https://static.streamlit.io/examples/cat.jpg", width=200)
-    ce, c1, ce, c2, ce, c4, ce, c5 = st.columns([0.07, 1, 0.07, 1, 0.07, 1, 0.07, 1])
+    records = pd.read_csv(csv_location) # Read csv with all DAQ records
+    ce, c1, ce, c2, ce = st.columns([0.07, 1, 0.07, 2, 0.07])
     with c1:
-        datastream = st.radio("Choose datastream:", ('SASE 1', 'SASE 2', 'SASE 3'))
-        #start_button = st.button("Start DAQ")
-        #d1 = st.date_input("Start date", datetime.datetime.now())
-        #d2 = st.date_input("Stop date", datetime.datetime.now())
-        
-    with c2:
-        xmlfolder = st.text_input('XML description file path:', '/daq/xfel/admtemp/2022/linac/main/run1982')
-        try:
-            xmldfile = file_selector(xmlfolder)
-        except:
-            st.write('Folder not found. Listing files in current folder.')
-            xmldfile = file_selector()
+        sa1_daq_button = tog.st_toggle_switch(label="SA1 Datastream", 
+                    key="Key1",  default_value=False, label_after = True, 
+                    inactive_color = '#D3D3D3', active_color="#11567f", track_color="#29B5E8")
+
+    
+        xmldfile = st.text_input('XML description file path:', '/daq/xfel/admtemp/2022/linac/main/run1982')
+        #try:
+        #    xmldfile = file_selector(xmlfolder)
+        #except:
+        #    st.write('Folder not found. Listing files in current folder.')
+        #    xmldfile = file_selector()
         st.write('You selected `%s`' % xmldfile)
         apply_filter = st.checkbox('Apply filter by destination')
+
+        st.markdown('Convert RAW files to HDF5:')
+        datastream = 'SASE 1'
+        if apply_filter:
+            if datastream == 'SASE 1':
+                bunchfilter = 'SA1'
+            if datastream == 'SASE 2':
+                bunchfilter = 'SA2'
+            if datastream == 'SASE 3':
+                bunchfilter = 'SA3'
+        else:
+            bunchfilter = 'all'
+            
+        startstring = '2021-11-17T15:02:05'
+        stopstring = '2021-11-17T15:02:05'
+        #command = "python3 modules/level0.py --start %s --stop %s --xmldfile %s --dest %s" % (startstring, stopstring, xmldfile, bunchfilter)
+        command = "python3 modules/hello.py"
+
+        convert_button = st.empty()
+        start_convert_button = convert_button.button('Start Conversion')
     
-    with c4:
-        daq_button = st.empty()
-        start_button = daq_button.button('Start DAQ')
+    with c2:
+        gd = GridOptionsBuilder.from_dataframe(records)
+        gd.configure_pagination(enabled=True)
+        gd.configure_default_column(groupable=True, enablePivot=True, enableValue=True, enableRowGroup=True)
+        gd.configure_side_bar()
+        gd.configure_selection(selection_mode='multiple', use_checkbox=True)
+        gridOptions=gd.build()
+        tab = st.empty()
+        grid_table = AgGrid(records, gridOptions=gridOptions, fit_columns_on_grid_load=True, height=400, width='90%', theme='streamlit',
+                            update_mode=GridUpdateMode.GRID_CHANGED, reload_data=False, allow_unsafe_jscode=True, editable=True)
 
-    st.markdown('Convert RAW files to HDF5:')
-    #ce, c1, ce, c2, ce, c4, ce, c5 = st.columns([0.07, 1, 0.07, 1, 0.07, 1, 0.07, 1])
-    #with c1:
-        #start_button = st.button("Start DAQ")
-    #    d1 = st.date_input("Start date", datetime.datetime.now())
-    #    d2 = st.date_input("Stop date", datetime.datetime.now())
-
-    #with c2:
-    #    test = st.empty()
-    #    start = "00:00"
-    #    end = "23:59"
-    #    times = []
-    #    start = now = datetime.datetime.strptime(start, "%H:%M")
-    #    end = datetime.datetime.strptime(end, "%H:%M")
-    #    while now != end:
-    #        times.append(str(now.strftime("%H:%M")))
-    #        now += datetime.timedelta(minutes=1)
-    #    times.append(end.strftime("%H:%M"))
-    #    t1 = st.selectbox('Start time:',times)
-    #    t2 = st.selectbox('Stop time:',times)
-
-    
-#if not daq_button:
-#    st.stop()
-
+## GRIDSEARCH
 with tab2:
     st.header("Gridsearch")
     st.write("Select the parameter space to consider for the search (max 10 values per parameter)")
@@ -168,19 +163,14 @@ with tab2:
                 e = RuntimeError('This is an exception of type RuntimeError')
                 st.exception(e)
 
+## TRAINING 
 with tab3:
    st.header("Train")
-   #st.image("https://static.streamlit.io/examples/owl.jpg", width=200)
    with st.form(key="train_form"):
 
     ce, c1, ce, c2, c3 = st.columns([0.07, 1, 0.07, 1, 0.07])
     with c1:
         option = st.selectbox('Select run',('6', '7', '9','10','11','12','13','14','15'))
-
-    #with c2:
-        
-        #words = st.text_area("Enter search words:", height=10)
-        #words = st.multiselect('Choose a Keyword Tag:', df, max_selections=1)
         train_button = st.form_submit_button(label="✨ Train")
 
     if train_button:
@@ -193,7 +183,7 @@ with tab3:
             e = RuntimeError('This is an exception of type RuntimeError')
             st.exception(e)
     
-
+## TESTING 
 with tab4:
     st.header("Test")
     n=1
@@ -209,24 +199,32 @@ with tab4:
         y="com_fel_y",
         color="/XFEL.FEL/XGM/XGM.2643.T9/INTENSITY.TD",
         color_continuous_scale="viridis")
-    #df = px.data.iris()
-    #fig = px.scatter(
-    #     df,
-    #     x="sepal_width",
-    #     color="sepal_length",
-    #     color_continuous_scale="reds")
-    #     y="sepal_length",)
+ 
     st.plotly_chart(fig, theme="streamlit", use_container_width=True)
 
+if sa1_daq_button == True:
+    starttime = datetime.datetime.now().replace(microsecond=0).isoformat()
+    print('Start_time', starttime) 
+    st.session_state['starttime'] = starttime
+    st.session_state['start_daq'] = True
+    asyncio.run(watch(records))
 
-test = st.empty()
-if start_button:
-    stop_button = daq_button.button('Stop DAQ')
-    asyncio.run(watch(test))
+if sa1_daq_button == False and st.session_state.start_daq == True:
+    stoptime = datetime.datetime.now().replace(microsecond=0).isoformat() 
+    print('Stop_time', stoptime)  
+    new_row = {'Datastream': 'SA1', 'Start': st.session_state['starttime'], 'Stop': stoptime}
+    record_update = records.append(new_row, ignore_index=True)
+    convert_df(record_update)
+    st.session_state['start_daq'] = False
+    #show_table(record_update)
+    #print(records)
 
-#if not submit_button:
-#    st.stop()
-#st.button('Get the data')
+
+if start_convert_button:
+    stop_convert_button = convert_button.button('Stop Conversion')
+    asyncio.run(convert(command))
+    
+    #start_convert_button = convert_button.button('Start Conversion')
 
 
 
@@ -234,9 +232,6 @@ if start_button:
 #    "Start time",
 #    datetime.date(2019, 7, 6))
 #st.write('Your birthday is:', d)
-
-#dfm = pd.read_csv('data/merged.csv')
-
 #st.markdown("## Download results")
 
 #cs, c1, c2, c3, cLast = st.columns([2, 1.5, 1.5, 1.5, 2])

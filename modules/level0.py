@@ -206,6 +206,6 @@ if __name__ == "__main__":
     stopstring = stopstring.replace(':', '')
 
     command = "export PYTHONPATH=/beegfs/desy/group/mpa/fla/software/daq/libs/CentOS-7-x86_64; export LD_LIBRARY_PATH=/beegfs/desy/group/mpa/fla/software/daq/libs/CentOS-7-x86_64:/beegfs/desy/group/mpa/fla/software/daq/libs/CentOS-7-x86_64/extlib; python3 daqraw2hdf5_filter.py -xml %s -xfel -onefile -local -descr %s -logic AND -dest %s,\%s -tstart %s -tstop %s -filt %s" % (
-        '~/Documents/Datastream/SASE2_BPM_extraction/linac.xml', xmldfile, filter_bit1, filter_bit2, startstring, stopstring, bunchfilter)
+        xmlfile, xmldfile, filter_bit1, filter_bit2, startstring, stopstring, bunchfilter)
     print(command)
     subprocess.run(command, shell=True)
