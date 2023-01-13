@@ -51,21 +51,32 @@ async def watch(records):
         #if stop_button:
         #    break
         
-async def convert(command):
+async def convert(bunchfilter, xmldfile):
     v = grid_table['selected_rows']
     if v:
-        st.write('Converting the following runs')
+        st.write('Converting the following runs:')
         st.dataframe(v)
+        v = v.reset_index()  # make sure indexes pair with number of rows
+        command = ''
+        for index, row in v.iterrows():
+            print(row['Start'], row['Stop'])
+            startstring = row['Start']
+            stopstring = row['Stop']
+            command = command + 'python'
 
-        try:
-            with st.spinner('Converting, please wait...'):
-                proc1 = subprocess.run(command, shell=True, check=True)
-        except FileNotFoundError as exc:
-            st.info(f"Process failed because the executable could not be found.\n{exc}")
-            return
-        except subprocess.CalledProcessError as exc:
-            st.info(f"Process failed because did not return a successful return code. " f"Returned {exc.returncode}\n{exc}")
-            return
+        #command = "python3 modules/level0.py --start %s --stop %s --xmldfile %s --dest %s" % (startstring, stopstring, xmldfile, bunchfilter)"
+        com = "python3 modules/hello.py; python3 modules/hello.py"
+
+        #try:
+        with st.spinner('Converting, please wait...'):
+            proc1 = subprocess.run(com, shell=True, check=True, capture_output=True)
+            print(proc1.stdout.decode())
+        #except FileNotFoundError as exc:
+        #    st.info(f"Process failed because the executable could not be found.\n{exc}")
+        #    return
+        #except subprocess.CalledProcessError as exc:
+        #    st.info(f"Process failed because did not return a successful return code. " f"Returned {exc.returncode}\n{exc}")
+        #    return
         
         if stop_convert_button:
             proc1.kill()
@@ -75,7 +86,7 @@ async def convert(command):
             st.success('Converted successfully!', icon="✅")
             return
     else:
-        st.exception('No runs selected. Select run(s) from table.')
+        st.info('No runs selected. Select run(s) from table.')
     
     
 if 'start_daq' not in st.session_state:
@@ -87,53 +98,82 @@ tab1, tab2, tab3, tab4 = st.tabs(["DAQ", "Gridsearch", "Train", "Test"])
 
 with tab1:
     st.header("DAQ")
-    records = pd.read_csv(csv_location) # Read csv with all DAQ records
-    ce, c1, ce, c2, ce = st.columns([0.07, 1, 0.07, 2, 0.07])
-    with c1:
-        sa1_daq_button = tog.st_toggle_switch(label="SA1 Datastream", 
-                    key="Key1",  default_value=False, label_after = True, 
-                    inactive_color = '#D3D3D3', active_color="#11567f", track_color="#29B5E8")
+    tab_datastream, tab_pydoocs = st.tabs(["Datastream", "PyDOOCS"])
+    with tab_datastream:    
+        records = pd.read_csv(csv_location) # Read csv with all DAQ records
+        ce, c1, ce, c2, ce = st.columns([0.07, 1, 0.07, 2, 0.07])
+        with c1:
+            sa1_daq_button = tog.st_toggle_switch(label="SA1 Datastream", 
+                        key="Key1",  default_value=False, label_after = True, 
+                        inactive_color = '#D3D3D3', active_color="#11567f", track_color="#29B5E8")
 
-    
-        xmldfile = st.text_input('XML description file path:', '/daq/xfel/admtemp/2022/linac/main/run1982')
-        #try:
-        #    xmldfile = file_selector(xmlfolder)
-        #except:
-        #    st.write('Folder not found. Listing files in current folder.')
-        #    xmldfile = file_selector()
-        st.write('You selected `%s`' % xmldfile)
-        apply_filter = st.checkbox('Apply filter by destination')
+        
+            xmldfile = st.text_input('XML description file path:', '/daq/xfel/admtemp/2022/linac/main/run1982')
+            #try:
+            #    xmldfile = file_selector(xmlfolder)
+            #except:
+            #    st.write('Folder not found. Listing files in current folder.')
+            #    xmldfile = file_selector()
+            st.write('You selected `%s`' % xmldfile)
+            apply_filter = st.checkbox('Apply filter by destination')
 
-        st.markdown('Convert RAW files to HDF5:')
-        datastream = 'SASE 1'
-        if apply_filter:
-            if datastream == 'SASE 1':
-                bunchfilter = 'SA1'
-            if datastream == 'SASE 2':
-                bunchfilter = 'SA2'
-            if datastream == 'SASE 3':
-                bunchfilter = 'SA3'
-        else:
-            bunchfilter = 'all'
+            st.markdown('Convert RAW files to HDF5:')
+            datastream = 'SASE 1'
+            if apply_filter:
+                if datastream == 'SASE 1':
+                    bunchfilter = 'SA1'
+                if datastream == 'SASE 2':
+                    bunchfilter = 'SA2'
+                if datastream == 'SASE 3':
+                    bunchfilter = 'SA3'
+            else:
+                bunchfilter = 'all'
+                
             
-        startstring = '2021-11-17T15:02:05'
-        stopstring = '2021-11-17T15:02:05'
-        #command = "python3 modules/level0.py --start %s --stop %s --xmldfile %s --dest %s" % (startstring, stopstring, xmldfile, bunchfilter)
-        command = "python3 modules/hello.py"
 
-        convert_button = st.empty()
-        start_convert_button = convert_button.button('Start Conversion')
-    
-    with c2:
-        gd = GridOptionsBuilder.from_dataframe(records)
-        gd.configure_pagination(enabled=True)
-        gd.configure_default_column(groupable=True, enablePivot=True, enableValue=True, enableRowGroup=True)
-        gd.configure_side_bar()
-        gd.configure_selection(selection_mode='multiple', use_checkbox=True)
-        gridOptions=gd.build()
-        tab = st.empty()
-        grid_table = AgGrid(records, gridOptions=gridOptions, fit_columns_on_grid_load=True, height=400, width='90%', theme='streamlit',
-                            update_mode=GridUpdateMode.GRID_CHANGED, reload_data=False, allow_unsafe_jscode=True, editable=True)
+            convert_button = st.empty()
+            start_convert_button = convert_button.button('Start Conversion')
+        
+        with c2:
+            gd = GridOptionsBuilder.from_dataframe(records)
+            gd.configure_pagination(enabled=True)
+            gd.configure_default_column(groupable=True, enablePivot=True, enableValue=True, enableRowGroup=True)
+            gd.configure_side_bar()
+            gd.configure_selection(selection_mode='multiple', use_checkbox=True)
+            gridOptions=gd.build()
+            tab = st.empty()
+            grid_table = AgGrid(records, gridOptions=gridOptions, fit_columns_on_grid_load=True, height=400, width='90%', theme='streamlit',
+                                update_mode=GridUpdateMode.GRID_CHANGED, reload_data=False, allow_unsafe_jscode=True, editable=True)
+    with tab_pydoocs:
+        st.write('Work in progress.')
+        fac = "XFEL*"
+        facility = pydoocs.names("XFEL*")
+        fac = st.selectbox('Facility filter', facility)
+        device = pydoocs.names(str(fac)+'/*')
+        dev = st.selectbox('Device filter', device)
+        location = pydoocs.names(str(fac)+'/'+ str(dev)+'/*')
+        loc = st.selectbox('Location filter', location)
+
+        st.write('You selected: ', str(fac)+'/'+ str(dev)+'/'+str(loc))
+        ce, c1, ce, c2, ce = st.columns([0.07, 1, 0.07, 1, 0.07])
+
+        with c1:
+            d1 = st.date_input("Start date", datetime.datetime.now())
+            d2 = st.date_input("Stop date", datetime.datetime.now())
+
+        with c2:
+            test = st.empty()
+            start = "00:00"
+            end = "23:59"
+            times = []
+            start = now = datetime.datetime.strptime(start, "%H:%M")
+            end = datetime.datetime.strptime(end, "%H:%M")
+            while now != end:
+                times.append(str(now.strftime("%H:%M")))
+                now += datetime.timedelta(minutes=1)
+            times.append(end.strftime("%H:%M"))
+            t1 = st.selectbox('Start time:',times)
+            t2 = st.selectbox('Stop time:',times)
 
 ## GRIDSEARCH
 with tab2:
@@ -222,7 +262,7 @@ if sa1_daq_button == False and st.session_state.start_daq == True:
 
 if start_convert_button:
     stop_convert_button = convert_button.button('Stop Conversion')
-    asyncio.run(convert(command))
+    asyncio.run(convert(bunchfilter, xmldfile))
     
     #start_convert_button = convert_button.button('Start Conversion')
 
